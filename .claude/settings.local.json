@@ -12,7 +12,8 @@
       "Bash(tree:*)",
       "Bash(findstr:*)",
       "Bash(git -C d:/Development/graphql status --short)",
-      "Bash(git -C d:/Development/graphql diff .gitignore)"
+      "Bash(git -C d:/Development/graphql diff .gitignore)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

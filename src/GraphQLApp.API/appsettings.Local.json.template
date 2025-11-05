@@ -1,0 +1,8 @@
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Data Source=10.10.10.69;Initial Catalog=dev_graphql;User ID=YOUR_USERNAME;Password=YOUR_PASSWORD;TrustServerCertificate=True;"
+  },
+  "JwtSettings": {
+    "SecretKey": "your-super-secret-key-min-32-chars-long-CHANGE-THIS-VALUE"
+  }
+}
