@@ -62,9 +62,9 @@ CREATE TABLE USERS (
 );
 ```
 
-**Megjegyzés:** A USERS tábla minimális. Az autentikációhoz szükséges további mezők (PasswordHash, Email, stb.) NEM részei az aktuális táblának. Későbbi fázisban:
-- Új AUTH tábla létrehozása VAGY
-- USERS tábla bővítése (ha az engedélyezett)
+**Megjegyzés:** A USERS tábla minimális. Az autentikációhoz szükséges további mezők (PasswordHash, Email, stb.) NEM részei az aktuális táblának.
+
+**Megoldás:** Phase 2-ben új **AUTH tábla** kerül létrehozásra az autentikációhoz (lásd alább).
 
 **Mezők:**
 - `USERCODE` (PK): Felhasználó egyedi kódja
@@ -150,22 +150,72 @@ CREATE TABLE PARTNER (
 - `CRUS`: Létrehozó felhasználó kódja (FK -> USERS.USERCODE)
 - `CRDTI`: Létrehozás dátuma/ideje
 
+### 3.5 AUTH Table (Új tábla - Phase 2-ben létrehozandó)
+
+**⚠️ FONTOS:** Ez egy új tábla, amelyet Phase 2-ben kell létrehozni az autentikációhoz.
+
+```sql
+-- Új tábla létrehozása Phase 2-ben
+CREATE TABLE AUTH (
+    AuthId          INT             NOT NULL PRIMARY KEY IDENTITY(1,1),
+    UserCode        NVARCHAR(50)    NOT NULL,           -- FK -> USERS.USERCODE
+    Email           NVARCHAR(255)   NOT NULL UNIQUE,
+    PasswordHash    NVARCHAR(255)   NOT NULL,           -- BCrypt hash
+    IsActive        BIT             NOT NULL DEFAULT 1,
+    LastLogin       DATETIME        NULL,
+    CreatedAt       DATETIME        NOT NULL DEFAULT GETDATE(),
+    UpdatedAt       DATETIME        NULL,
+    CONSTRAINT FK_AUTH_USERS FOREIGN KEY (UserCode) REFERENCES USERS(USERCODE)
+);
+
+-- Index az email-en (bejelentkezéshez)
+CREATE UNIQUE INDEX IX_AUTH_EMAIL ON AUTH(Email);
+
+-- Index a UserCode-on
+CREATE INDEX IX_AUTH_USERCODE ON AUTH(UserCode);
+```
+
+**Mezők:**
+- `AuthId` (PK): Autentikáció egyedi azonosítója (INT IDENTITY)
+- `UserCode` (FK): Kapcsolat a USERS táblához (USERS.USERCODE)
+- `Email`: Bejelentkezési email (UNIQUE)
+- `PasswordHash`: BCrypt hash-elt jelszó (min 60 karakter BCrypt hash)
+- `IsActive`: Aktív-e a felhasználó (BIT - letiltás funkció)
+- `LastLogin`: Utolsó sikeres bejelentkezés időpontja
+- `CreatedAt`: Auth rekord létrehozás dátuma
+- `UpdatedAt`: Utolsó módosítás dátuma (pl. jelszó változtatás)
+
+**Autentikáció folyamat:**
+1. Felhasználó bejelentkezik: `POST /api/auth/login { email, password }`
+2. Rendszer lekérdezi AUTH táblából az email-hez tartozó rekordot
+3. Ellenőrzi IsActive = 1
+4. BCrypt.Verify() összehasonlítja a jelszót a PasswordHash-sel
+5. Sikeres auth esetén:
+   - JWT token generálás (UserCode + Email a payload-ban)
+   - LastLogin frissítése
+   - Token visszaküldése a kliensnek
+6. Sikertelen auth esetén: 401 Unauthorized
+
 ## 4. Foreign Key Constraints
 
 **Megjegyzés:** A következő kapcsolatok logikailag léteznek, de lehet, hogy NEM érvényesülnek adatbázis szinten (CONSTRAINT hiánya):
 
 ```sql
--- Logikai kapcsolatok (lehet hogy nincs CONSTRAINT):
+-- Meglévő táblák közötti logikai kapcsolatok:
 -- CIKK.GYARTO -> GYARTO.GYARTO (string-string kapcsolat)
 -- CIKK.ELOALLITOPID -> PARTNER.PARTNERID
 -- CIKK.CRUS -> USERS.USERCODE
 -- GYARTO.CRUS -> USERS.USERCODE
 -- PARTNER.CRUS -> USERS.USERCODE
+
+-- Új AUTH tábla kapcsolata (Phase 2-ben létrehozandó):
+-- AUTH.UserCode -> USERS.USERCODE (CONSTRAINT FK_AUTH_USERS)
 ```
 
 **Teendő Phase 2-ben:**
-- Ellenőrizni a meglévő FOREIGN KEY constraint-eket
-- Hiányzó constraint-ek hozzáadása (ha szükséges és engedélyezett)
+1. Ellenőrizni a meglévő FOREIGN KEY constraint-eket
+2. Hiányzó constraint-ek hozzáadása (ha szükséges és engedélyezett)
+3. **AUTH tábla létrehozása** a fenti definíció szerint
 
 ## 5. Indexes (To Be Analyzed in Phase 2)
 
@@ -285,20 +335,80 @@ END
 
 ## 8. Data Migration Strategy
 
-**⚠️ NINCS MIGRATION SZÜKSÉGES!**
+**⚠️ MEGLÉVŐ TÁBLÁKHOZ NINCS MIGRATION SZÜKSÉGES!**
 
-A projekt egy meglévő, működő adatbázist használ. Tábla létrehozás vagy séma módosítás NEM szükséges.
+A projekt egy meglévő, működő adatbázist használ. A CIKK, GYARTO, PARTNER, USERS táblák már léteznek és adatokkal vannak feltöltve.
 
-**Ami szükséges lehet:**
-1. **Phase 2 - Adatbázis integráció:**
-   - Séma reverse engineering (pontos mező típusok, hosszak lekérdezése)
-   - Index optimalizálás
-   - Tárolt eljárások létrehozása
+**Ami szükséges Phase 2-ben:**
 
-2. **Autentikáció megoldása:**
-   - **Opció A:** Új AUTH tábla létrehozása (UserCode, PasswordHash, Email, IsActive, stb.)
-   - **Opció B:** USERS tábla bővítése (ha engedélyezett)
-   - **Opció C:** Külső authentication provider (Azure AD, Identity Server)
+### 8.1 Új AUTH tábla létrehozása
+
+```sql
+-- 001_create_auth_table.sql
+USE dev_graphql;
+GO
+
+-- AUTH tábla létrehozása
+CREATE TABLE AUTH (
+    AuthId          INT             NOT NULL PRIMARY KEY IDENTITY(1,1),
+    UserCode        NVARCHAR(50)    NOT NULL,
+    Email           NVARCHAR(255)   NOT NULL UNIQUE,
+    PasswordHash    NVARCHAR(255)   NOT NULL,
+    IsActive        BIT             NOT NULL DEFAULT 1,
+    LastLogin       DATETIME        NULL,
+    CreatedAt       DATETIME        NOT NULL DEFAULT GETDATE(),
+    UpdatedAt       DATETIME        NULL,
+    CONSTRAINT FK_AUTH_USERS FOREIGN KEY (UserCode) REFERENCES USERS(USERCODE)
+);
+
+-- Indexek
+CREATE UNIQUE INDEX IX_AUTH_EMAIL ON AUTH(Email);
+CREATE INDEX IX_AUTH_USERCODE ON AUTH(UserCode);
+
+PRINT 'AUTH tábla sikeresen létrehozva';
+GO
+```
+
+### 8.2 Seed adatok az AUTH táblához
+
+```sql
+-- 002_seed_auth_data.sql
+USE dev_graphql;
+GO
+
+-- Példa admin felhasználó létrehozása
+-- Jelszó: Admin123! (BCrypt hash)
+INSERT INTO AUTH (UserCode, Email, PasswordHash, IsActive, CreatedAt)
+SELECT
+    USERCODE,
+    'admin@example.com',
+    '$2a$11$8vJ5YfJKJNZK8Y5Zx8XYuO8Y5Zx8XYuO8Y5Zx8XYuO8Y5Zx8XYuO8Y', -- BCrypt hash példa
+    1,
+    GETDATE()
+FROM USERS
+WHERE USERCODE = 'ADMIN' -- Feltételezve hogy van ADMIN usercode
+  AND NOT EXISTS (SELECT 1 FROM AUTH WHERE UserCode = 'ADMIN');
+
+PRINT 'AUTH seed adatok létrehozva';
+GO
+```
+
+**Megjegyzés:** A PasswordHash értéket a tényleges BCrypt.HashPassword() függvénnyel kell generálni a backend kódban!
+
+### 8.3 További Phase 2 feladatok
+
+1. **Séma reverse engineering:**
+   - Pontos mező típusok, hosszak lekérdezése minden táblához
+   - `SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME IN (...)`
+
+2. **Index optimalizálás:**
+   - Meglévő indexek elemzése
+   - Hiányzó indexek hozzáadása
+
+3. **Tárolt eljárások:**
+   - GetCikkekByGyarto
+   - GetStatisztika
+   - GetCikkWithDetails
 
 ## 9. Reverse Engineering Script (For Phase 2)
 

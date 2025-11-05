@@ -119,29 +119,34 @@ Meglévő adatbázis integráció, tárolt eljárások létrehozása, teljesítm
 - **Leírás:** Meglévő táblák (CIKK, GYARTO, PARTNER, USERS) pontos sémájának lekérdezése, mező típusok, hosszak, NULL-abiliy dokumentálása
 - **Kimenet:** Részletes adatbázis séma dokumentáció minden mezővel
 
-#### 2. Entity modellek létrehozása
+#### 2. AUTH tábla létrehozása
 - **Agent:** backend-api-developer
-- **Leírás:** C# entity osztályok létrehozása a CIKK, GYARTO, PARTNER, USERS tábláknak megfelelően (pontos mező névvel és típussal)
-- **Kimenet:** Entity osztályok a GraphQLApp.Core/Entities mappában
+- **Leírás:** Új AUTH tábla létrehozása az autentikációhoz (AuthId, UserCode, Email, PasswordHash, IsActive, LastLogin, CreatedAt, UpdatedAt). SQL script futtatása a dev_graphql adatbázison. Seed adatok létrehozása (admin user).
+- **Kimenet:** AUTH tábla létrehozva, SQL scriptek: `001_create_auth_table.sql`, `002_seed_auth_data.sql`
 
-#### 3. Teljesítmény indexek elemzése
+#### 3. Entity modellek létrehozása
+- **Agent:** backend-api-developer
+- **Leírás:** C# entity osztályok létrehozása a CIKK, GYARTO, PARTNER, USERS, AUTH tábláknak megfelelően (pontos mező névvel és típussal)
+- **Kimenet:** Entity osztályok a GraphQLApp.Core/Entities mappában (Cikk.cs, Gyarto.cs, Partner.cs, User.cs, Auth.cs)
+
+#### 4. Teljesítmény indexek elemzése
 - **Agent:** technical-architect
-- **Leírás:** Meglévő indexek elemzése, hiányzó indexek azonosítása (CIKK.GYARTO, CIKK.ELOALLITOPID, stb.), új indexek tervezése
+- **Leírás:** Meglévő indexek elemzése, hiányzó indexek azonosítása (CIKK.GYARTO, CIKK.ELOALLITOPID, AUTH.Email stb.), új indexek tervezése
 - **Kimenet:** Index optimalizálási javaslat dokumentum
 
-#### 4. Tárolt eljárások fejlesztése
+#### 5. Tárolt eljárások fejlesztése
 - **Agent:** backend-api-developer
-- **Leírás:** GetCikkekByGyarto, GetStatisztika és egyéb hasznos tárolt eljárások implementálása a meglévő táblákra
-- **Kimenet:** Stored procedure SQL scriptek
+- **Leírás:** GetCikkekByGyarto, GetStatisztika, GetCikkWithDetails és egyéb hasznos tárolt eljárások implementálása a meglévő táblákra
+- **Kimenet:** Stored procedure SQL scriptek (`003_stored_procedures.sql`)
 
-#### 5. Adatbázis kapcsolat tesztelése
+#### 6. Adatbázis kapcsolat tesztelése
 - **Agent:** backend-api-developer
-- **Leírás:** Dapper konfigurálása, kapcsolat tesztelése, egyszerű CRUD műveletek tesztelése a meglévő táblákra
-- **Kimenet:** Működő adatbázis kapcsolat minden táblához
+- **Leírás:** Dapper konfigurálása, kapcsolat tesztelése, egyszerű CRUD műveletek tesztelése minden táblára (CIKK, GYARTO, PARTNER, USERS, AUTH)
+- **Kimenet:** Működő adatbázis kapcsolat minden táblához, unit tesztek
 
-#### 6. Adatbázis backup stratégia ellenőrzése
+#### 7. Adatbázis backup stratégia ellenőrzése
 - **Agent:** devops-infrastructure-engineer
-- **Leírás:** Meglévő backup stratégia ellenőrzése, javasolt backup ütemezés dokumentálása
+- **Leírás:** Meglévő backup stratégia ellenőrzése, javasolt backup ütemezés dokumentálása, AUTH tábla backup-ba való beillesztése
 - **Kimenet:** Backup stratégia ellenőrzési riport
 
 ---

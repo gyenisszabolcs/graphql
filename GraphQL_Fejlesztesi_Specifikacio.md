@@ -388,16 +388,90 @@ USERCODE        NVARCHAR(?)     -- Primary Key (felhasználói kód)
 USERNAME        NVARCHAR(?)     -- Felhasználó neve
 ```
 
-**Megjegyzés:** A USERS tábla jelenleg csak 2 mezőt tartalmaz. Az autentikációhoz szükséges további mezők (pl. PasswordHash) későbbi fázisban kerülnek hozzáadásra, vagy alternatív megoldást kell alkalmazni (pl. külön Auth tábla).
+**Megjegyzés:** A USERS tábla jelenleg csak 2 mezőt tartalmaz, ezért NEM alkalmas autentikációra.
+
+### 3.5 AUTH Table (Új tábla - Phase 2-ben létrehozandó)
+
+**⚠️ FONTOS:** Ez egy új tábla, amelyet a Phase 2-ben kell létrehozni az autentikációhoz.
+
+```sql
+-- Új tábla létrehozása Phase 2-ben
+CREATE TABLE AUTH (
+    AuthId          INT             NOT NULL PRIMARY KEY IDENTITY(1,1),
+    UserCode        NVARCHAR(50)    NOT NULL,           -- FK -> USERS.USERCODE
+    Email           NVARCHAR(255)   NOT NULL UNIQUE,
+    PasswordHash    NVARCHAR(255)   NOT NULL,
+    IsActive        BIT             NOT NULL DEFAULT 1,
+    LastLogin       DATETIME        NULL,
+    CreatedAt       DATETIME        NOT NULL DEFAULT GETDATE(),
+    UpdatedAt       DATETIME        NULL,
+    CONSTRAINT FK_AUTH_USERS FOREIGN KEY (UserCode) REFERENCES USERS(USERCODE)
+);
+
+-- Index az email-en (bejelentkezéshez)
+CREATE UNIQUE INDEX IX_AUTH_EMAIL ON AUTH(Email);
+
+-- Index a UserCode-on
+CREATE INDEX IX_AUTH_USERCODE ON AUTH(UserCode);
+```
+
+**Mezők:**
+- `AuthId` (PK): Autentikáció egyedi azonosítója (INT IDENTITY)
+- `UserCode` (FK): Kapcsolat a USERS táblához (USERS.USERCODE)
+- `Email`: Bejelentkezési email (UNIQUE)
+- `PasswordHash`: BCrypt hash-elt jelszó
+- `IsActive`: Aktív-e a felhasználó (letiltás funkció)
+- `LastLogin`: Utolsó bejelentkezés időpontja
+- `CreatedAt`: Létrehozás dátuma
+- `UpdatedAt`: Utolsó módosítás dátuma
+
+**Autentikáció folyamat:**
+1. Felhasználó bejelentkezik email + password-dal
+2. Rendszer lekérdezi az AUTH táblából az email-hez tartozó PasswordHash-t
+3. BCrypt.Verify() összehasonlítja a megadott jelszót a hash-el
+4. Sikeres auth esetén JWT token generálás a UserCode-dal
+5. LastLogin frissítése
 
 ### 5.3 Kapcsolati séma
 
 ```
-GYARTO (1:GYARTO) ──────< (N:GYARTO) CIKK
-PARTNER (1:PARTNERID) ──────< (N:ELOALLITOPID) CIKK
-USERS (1:USERCODE) ──────< (N:CRUS) CIKK
-USERS (1:USERCODE) ──────< (N:CRUS) GYARTO
-USERS (1:USERCODE) ──────< (N:CRUS) PARTNER
+                    ┌─────────────┐
+                    │    USERS    │
+                    │  (meglévő)  │
+                    ├─────────────┤
+                    │ PK│USERCODE │
+                    │   │USERNAME │
+                    └─────────────┘
+                         │
+              ┌──────────┼────────────────────────┐
+              │          │                        │
+              │ 1:USERCODE                        │ 1:USERCODE
+              │          │                        │
+              ▼          ▼                        ▼
+    ┌─────────────┐  ┌────────┐           ┌──────────┐
+    │    AUTH     │  │  CIKK  │           │  GYARTO  │
+    │    (új)     │  │        │           │          │
+    ├─────────────┤  └────────┘           └──────────┘
+    │PK│AuthId    │      │                      │
+    │FK│UserCode  │      │                      │
+    │  │Email     │      ▼ N:GYARTO             │
+    │  │PwdHash   │  ┌──────────┐               │
+    └─────────────┘  │  GYARTO  │◄──────────────┘
+                     │          │
+                     └──────────┘
+                         │
+                         ▼ N:ELOALLITOPID
+                     ┌──────────┐
+                     │ PARTNER  │
+                     └──────────┘
+
+Kapcsolatok:
+- AUTH (1:UserCode) ──────< (1:USERCODE) USERS (új kapcsolat)
+- GYARTO (1:GYARTO) ──────< (N:GYARTO) CIKK
+- PARTNER (1:PARTNERID) ──────< (N:ELOALLITOPID) CIKK
+- USERS (1:USERCODE) ──────< (N:CRUS) CIKK
+- USERS (1:USERCODE) ──────< (N:CRUS) GYARTO
+- USERS (1:USERCODE) ──────< (N:CRUS) PARTNER
 ```
 
 ### 5.4 Tárolt eljárások példák
