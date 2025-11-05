@@ -66,7 +66,7 @@ A `.claude/agents/` mappában specializált agent konfigurációk találhatók:
 
 ## Aktuális Állapot
 
-A projekt jelenleg a **1. Fázis (Infrastruktúra) indítása előtt** állapotban van:
+A projekt jelenleg a **2. Fázis (Adatbázis Integráció) előtt** állapotban van:
 - ✅ Git repository létrehozva és GitHub-ra feltöltve
 - ✅ Alapvető dokumentáció elkészült
 - ✅ Claude agents konfigurálva
@@ -77,38 +77,62 @@ A projekt jelenleg a **1. Fázis (Infrastruktúra) indítása előtt** állapotb
   - ✅ Adatbázis séma dokumentálva (meglévő `dev_graphql` adatbázis)
   - ✅ Fejlesztői környezet specifikálva
   - ✅ Git repository struktúra kész
-- 🚀 **1. Fázis (Infrastruktúra)**: KÉSZ AZ INDÍTÁSRA (2025-11-05)
-  - ✅ Phase 1 PRD elkészítve (18 user story, 6 epic)
-  - ✅ Priority Matrix létrehozva (22 task priorizálva)
-  - ✅ Execution Summary dokumentálva
-  - ✅ 6 Workstream definiálva agent hozzárendeléssel
-  - 📋 **Következő lépés**: Agents indítása a 6 workstream végrehajtására
-- ⏳ Backend fejlesztés: 2-3. fázisban kezdődik
-- ⏳ Frontend fejlesztés: 6. fázisban kezdődik
+- ✅ **1. Fázis BEFEJEZVE** (2025-11-05):
+  - ✅ SQL Server kapcsolat dokumentálva
+  - ✅ .NET 8 fejlesztői környezet konfigurálva
+  - ✅ Solution struktúra létrehozva (4 projekt: API, Core, Infrastructure, Services)
+  - ✅ NuGet csomagok telepítve (Hot Chocolate, Dapper, Serilog, JWT, BCrypt)
+  - ✅ Konfiguráció kezelés beállítva (appsettings.json, .Local.json template)
+  - ✅ Serilog logging infrastruktúra működik
+  - ✅ Build sikeres (0 error, 0 warning)
+- 🚀 **2. Fázis (Adatbázis Integráció)**: KÖVETKEZIK
+- ⏳ Backend API fejlesztés: 3-5. fázisban
+- ⏳ Frontend fejlesztés: 6. fázisban
 
-## Következő Lépések (1. Fázis - Infrastruktúra)
+## Következő Lépések (2. Fázis - Adatbázis Integráció)
 
 ### Fontos adatbázis információk
 - **Adatbázis neve**: `dev_graphql` (már létezik!)
 - **SQL Server**: `10.10.10.69`
-- **Táblák**: CIKK, GYARTO, PARTNER, USERS (már léteznek!)
-- **Nincs szükség új tábla létrehozására**
+- **Meglévő táblák**: CIKK, GYARTO, PARTNER, USERS
+- **Új tábla Phase 2-ben**: AUTH (autentikációhoz)
 
-### 1. Fázis feladatai:
-1. SQL Server kapcsolat tesztelése (10.10.10.69, dev_graphql adatbázis)
-2. .NET 8 SDK és VS Code fejlesztői környezet beállítása
-3. .NET Solution és projekt struktúra létrehozása
-4. NuGet csomagok telepítése (Hot Chocolate, Dapper, Serilog, JWT)
-5. Konfigurációs fájlok létrehozása (appsettings.json, appsettings.Local.json)
-6. Serilog logging infrastruktúra beállítása
+### 2. Fázis feladatai:
+1. **Adatbázis séma reverse engineering**
+   - Pontos mező típusok, hosszak lekérdezése
+   - SQL: `SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME IN (...)`
 
-### 2. Fázis feladatai (Adatbázis integráció):
-1. Meglévő táblák sémájának reverse engineering
-2. C# Entity modellek létrehozása (Cikk, Gyarto, Partner, User)
-3. Dapper repository-k implementálása
-4. Tárolt eljárások fejlesztése (GetCikkekByGyarto, GetStatisztika)
-5. Index optimalizálás vizsgálata
-6. Adatbázis kapcsolat tesztelése
+2. **AUTH tábla létrehozása**
+   - SQL script: `scripts/sql/001_create_auth_table.sql`
+   - Seed admin user: `scripts/sql/002_seed_auth_data.sql`
+   - Mezők: AuthId, UserCode, Email, PasswordHash, IsActive, LastLogin
+
+3. **Entity modellek létrehozása**
+   - `Core/Entities/Cikk.cs` (CIKK tábla)
+   - `Core/Entities/Gyarto.cs` (GYARTO tábla)
+   - `Core/Entities/Partner.cs` (PARTNER tábla)
+   - `Core/Entities/User.cs` (USERS tábla)
+   - `Core/Entities/Auth.cs` (AUTH tábla - új)
+
+4. **Teljesítmény indexek elemzése**
+   - Meglévő indexek lekérdezése
+   - Hiányzó indexek azonosítása (CIKK.GYARTO, AUTH.Email, stb.)
+
+5. **Tárolt eljárások fejlesztése**
+   - GetCikkekByGyarto
+   - GetStatisztika
+   - GetCikkWithDetails
+
+6. **Dapper repository-k implementálása**
+   - `Infrastructure/Repositories/CikkRepository.cs`
+   - `Infrastructure/Repositories/GyartoRepository.cs`
+   - `Infrastructure/Repositories/PartnerRepository.cs`
+   - `Infrastructure/Repositories/UserRepository.cs`
+   - `Infrastructure/Repositories/AuthRepository.cs`
+
+7. **Adatbázis kapcsolat tesztelése**
+   - Unit tesztek minden repository-hoz
+   - Integration tesztek CRUD műveletekhez
 
 ## Hasznos Parancsok
 
