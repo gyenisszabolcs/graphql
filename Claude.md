@@ -66,20 +66,44 @@ A `.claude/agents/` mappában specializált agent konfigurációk találhatók:
 
 ## Aktuális Állapot
 
-A projekt jelenleg az **inicializálási** fázisban van:
-- ✅ Git repository létrehozva
+A projekt jelenleg a **0. Fázis (Tervezés) utáni** állapotban van:
+- ✅ Git repository létrehozva és GitHub-ra feltöltve
 - ✅ Alapvető dokumentáció elkészült
 - ✅ Claude agents konfigurálva
-- ⏳ Backend fejlesztés: Még nem kezdődött el
-- ⏳ Frontend fejlesztés: Még nem kezdődött el
+- ✅ **0. Fázis BEFEJEZVE** (2025-11-04):
+  - ✅ Követelmények validálva
+  - ✅ UX/UI tervezés és wireframe-ek kész
+  - ✅ Technikai architektúra megtervezve
+  - ✅ Adatbázis séma dokumentálva (meglévő `dev_graphql` adatbázis)
+  - ✅ Fejlesztői környezet specifikálva
+  - ✅ Git repository struktúra kész
+- ⏳ **1. Fázis (Infrastruktúra)**: Következik
+- ⏳ Backend fejlesztés: 2-3. fázisban kezdődik
+- ⏳ Frontend fejlesztés: 6. fázisban kezdődik
 
-## Következő Lépések
+## Következő Lépések (1. Fázis - Infrastruktúra)
 
-1. Adatbázis technológia kiválasztása
-2. GraphQL schema definiálása
-3. Backend projekt inicializálása (Node.js, npm/yarn)
-4. Frontend projekt inicializálása (Vue.js)
-5. Fejlesztői környezet beállítása
+### Fontos adatbázis információk
+- **Adatbázis neve**: `dev_graphql` (már létezik!)
+- **SQL Server**: `10.10.10.69`
+- **Táblák**: CIKK, GYARTO, PARTNER, USERS (már léteznek!)
+- **Nincs szükség új tábla létrehozására**
+
+### 1. Fázis feladatai:
+1. SQL Server kapcsolat tesztelése (10.10.10.69, dev_graphql adatbázis)
+2. .NET 8 SDK és VS Code fejlesztői környezet beállítása
+3. .NET Solution és projekt struktúra létrehozása
+4. NuGet csomagok telepítése (Hot Chocolate, Dapper, Serilog, JWT)
+5. Konfigurációs fájlok létrehozása (appsettings.json, appsettings.Local.json)
+6. Serilog logging infrastruktúra beállítása
+
+### 2. Fázis feladatai (Adatbázis integráció):
+1. Meglévő táblák sémájának reverse engineering
+2. C# Entity modellek létrehozása (Cikk, Gyarto, Partner, User)
+3. Dapper repository-k implementálása
+4. Tárolt eljárások fejlesztése (GetCikkekByGyarto, GetStatisztika)
+5. Index optimalizálás vizsgálata
+6. Adatbázis kapcsolat tesztelése
 
 ## Hasznos Parancsok
 
@@ -90,15 +114,30 @@ git add .
 git commit -m "commit message"
 git push
 
-# Backend (később)
+# .NET Backend
+dotnet new sln -n GraphQLApp
+dotnet new webapi -n GraphQLApp.API
+dotnet new classlib -n GraphQLApp.Core
+dotnet new classlib -n GraphQLApp.Infrastructure
+dotnet sln add **/*.csproj
+dotnet restore
+dotnet build
+dotnet run --project src/GraphQLApp.API
+dotnet test
+
+# NuGet csomagok
+dotnet add package HotChocolate.AspNetCore
+dotnet add package Dapper
+dotnet add package Serilog.AspNetCore
+dotnet add package Microsoft.Data.SqlClient
+
+# Vue.js Frontend (6. fázis)
 npm install
 npm run dev
-npm test
-
-# Frontend (később)
-npm install
-npm run serve
 npm run build
+
+# SQL Server lekérdezések (reverse engineering)
+sqlcmd -S 10.10.10.69 -d dev_graphql -Q "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME IN ('CIKK', 'GYARTO', 'PARTNER', 'USERS')"
 ```
 
 ## Megjegyzések
@@ -106,3 +145,8 @@ npm run build
 - A projekt Windows környezetben fejlesztve (d:\Development\graphql)
 - GitHub repository: https://github.com/gyenisszabolcs/graphql.git
 - A fejlesztés során követjük a best practice-eket és modern design pattern-öket
+- **⚠️ FONTOS**: A projekt egy meglévő adatbázist használ!
+  - Adatbázis: `dev_graphql` (már létezik)
+  - SQL Server: `10.10.10.69`
+  - Táblák: CIKK, GYARTO, PARTNER, USERS
+  - Credentials: `appsettings.Local.json` (git-ignored)
