@@ -1,0 +1,55 @@
+{
+  // C# formatting
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": false,
+  "editor.tabSize": 4,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": false,
+
+  // C# IntelliSense
+  "omnisharp.enableRoslynAnalyzers": true,
+  "omnisharp.enableEditorConfigSupport": true,
+  "omnisharp.enableImportCompletion": true,
+
+  // File associations
+  "files.associations": {
+    "*.csproj": "xml",
+    "*.graphql": "graphql"
+  },
+
+  // Files to exclude from explorer
+  "files.exclude": {
+    "**/bin": true,
+    "**/obj": true,
+    "**/.vs": true,
+    "**/logs": true
+  },
+
+  // Search exclusions
+  "search.exclude": {
+    "**/bin": true,
+    "**/obj": true,
+    "**/logs": true,
+    "**/node_modules": true
+  },
+
+  // GraphQL configuration
+  "graphql-config.load.rootDir": "./",
+
+  // Terminal configuration
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.cwd": "${workspaceFolder}",
+
+  // Auto-save
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 1000,
+
+  // Trim trailing whitespace
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+
+  // Encoding
+  "files.encoding": "utf8",
+  "files.eol": "\n"
+}
