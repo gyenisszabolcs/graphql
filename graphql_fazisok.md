@@ -69,14 +69,14 @@ A projekt technikai alapjainak meghatározása, követelmények tisztázása és
 ## 1. Fázis - Infrastruktúra és Architektúra
 
 ### Cél
-A fejlesztői és production környezet előkészítése, alapvető infrastruktúra létrehozása.
+A fejlesztői környezet előkészítése, alapvető infrastruktúra létrehozása.
 
 ### Feladatok
 
-#### 1. SQL Server környezet előkészítése
+#### 1. SQL Server kapcsolat tesztelése
 - **Agent:** devops-infrastructure-engineer
-- **Leírás:** SQL Server (10.10.10.69) elérhetőség tesztelése, adatbázisok létrehozása (Dev/Prod), felhasználók és jogosultságok beállítása
-- **Kimenet:** Működő SQL Server környezet, dev_user és prod_user létrehozva
+- **Leírás:** SQL Server (10.10.10.69) elérhetőség tesztelése, `dev_graphql` adatbázis elérésének ellenőrzése, meglévő táblák (CIKK, GYARTO, PARTNER, USERS) sémájának dokumentálása
+- **Kimenet:** Kapcsolat sikeres, adatbázis struktúra dokumentálva
 
 #### 2. Visual Studio / VS Code fejlesztői környezet beállítása
 - **Agent:** backend-api-developer
@@ -95,8 +95,8 @@ A fejlesztői és production környezet előkészítése, alapvető infrastrukt�
 
 #### 5. Konfiguráció kezelés beállítása
 - **Agent:** backend-api-developer
-- **Leírás:** appsettings.json, appsettings.Development.json, appsettings.Production.json létrehozása, .gitignore beállítása appsettings.Local.json-hoz
-- **Kimenet:** Konfigurációs fájlok szerkezete kész
+- **Leírás:** appsettings.json létrehozása `dev_graphql` kapcsolódási string-gel (credentials nélkül), appsettings.Local.json template létrehozása (git-ignore-olva), SQL Server credentials tárolása Local.json-ban
+- **Kimenet:** Konfig fájlok kész, .gitignore frissítve, credentials biztonságosan tárolva
 
 #### 6. Logging infrastruktúra beállítása (Serilog)
 - **Agent:** backend-api-developer
@@ -105,42 +105,44 @@ A fejlesztői és production környezet előkészítése, alapvető infrastrukt�
 
 ---
 
-## 2. Fázis - Adatbázis Fejlesztés
+## 2. Fázis - Adatbázis Integráció
 
 ### Cél
-Adatbázis séma implementálása, tárolt eljárások létrehozása, kezdeti adatok betöltése.
+Meglévő adatbázis integráció, tárolt eljárások létrehozása, teljesítmény optimalizálás.
+
+**⚠️ FONTOS:** Ez a fázis NEM tartalmaz tábla létrehozást, mert a `dev_graphql` adatbázis és táblák (CIKK, GYARTO, PARTNER, USERS) már léteznek!
 
 ### Feladatok
 
-#### 1. Adatbázis táblák létrehozása
+#### 1. Adatbázis séma reverse engineering
 - **Agent:** backend-api-developer
-- **Leírás:** users, cikkek, gyartok, partnerek táblák létrehozása SQL script-ekkel a specifikáció szerint
-- **Kimenet:** SQL script: `init-database.sql`
+- **Leírás:** Meglévő táblák (CIKK, GYARTO, PARTNER, USERS) pontos sémájának lekérdezése, mező típusok, hosszak, NULL-abiliy dokumentálása
+- **Kimenet:** Részletes adatbázis séma dokumentáció minden mezővel
 
-#### 2. Foreign key kapcsolatok beállítása
+#### 2. Entity modellek létrehozása
 - **Agent:** backend-api-developer
-- **Leírás:** Gyártók és cikkek közötti kapcsolat beállítása, referential integrity konfigurálása
-- **Kimenet:** Működő referenciális integritás
+- **Leírás:** C# entity osztályok létrehozása a CIKK, GYARTO, PARTNER, USERS tábláknak megfelelően (pontos mező névvel és típussal)
+- **Kimenet:** Entity osztályok a GraphQLApp.Core/Entities mappában
 
-#### 3. Indexek létrehozása
+#### 3. Teljesítmény indexek elemzése
 - **Agent:** technical-architect
-- **Leírás:** Teljesítmény optimalizálás: indexek létrehozása gyakran használt mezőkön (Username, CikkKod, stb.)
-- **Kimenet:** Index definíciók SQL scriptben
+- **Leírás:** Meglévő indexek elemzése, hiányzó indexek azonosítása (CIKK.GYARTO, CIKK.ELOALLITOPID, stb.), új indexek tervezése
+- **Kimenet:** Index optimalizálási javaslat dokumentum
 
 #### 4. Tárolt eljárások fejlesztése
 - **Agent:** backend-api-developer
-- **Leírás:** GetCikkekByGyarto, GetStatisztika és egyéb tárolt eljárások implementálása
+- **Leírás:** GetCikkekByGyarto, GetStatisztika és egyéb hasznos tárolt eljárások implementálása a meglévő táblákra
 - **Kimenet:** Stored procedure SQL scriptek
 
-#### 5. Kezdeti teszt adatok betöltése
+#### 5. Adatbázis kapcsolat tesztelése
 - **Agent:** backend-api-developer
-- **Leírás:** Teszt felhasználók, gyártók, cikkek, partnerek adatainak betöltése dev adatbázisba
-- **Kimenet:** Seed data SQL script
+- **Leírás:** Dapper konfigurálása, kapcsolat tesztelése, egyszerű CRUD műveletek tesztelése a meglévő táblákra
+- **Kimenet:** Működő adatbázis kapcsolat minden táblához
 
-#### 6. Adatbázis backup stratégia kialakítása
+#### 6. Adatbázis backup stratégia ellenőrzése
 - **Agent:** devops-infrastructure-engineer
-- **Leírás:** Automatikus backup ütemezés beállítása, recovery terv dokumentálása
-- **Kimenet:** Backup stratégia dokumentum, ütemezett backup job-ok
+- **Leírás:** Meglévő backup stratégia ellenőrzése, javasolt backup ütemezés dokumentálása
+- **Kimenet:** Backup stratégia ellenőrzési riport
 
 ---
 

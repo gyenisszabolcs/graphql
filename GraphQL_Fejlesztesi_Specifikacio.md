@@ -332,86 +332,89 @@ GraphQLApp/
 
 ## 5. Adatbázis architektúra
 
-### 5.1 Táblák sémája
+### 5.1 Meglévő adatbázis
 
-#### **users**
+**⚠️ FONTOS:** A projekt egy **már létező** adatbázist használ. Nem kell új adatbázist vagy táblákat létrehozni!
+
+- **Adatbázis neve:** `dev_graphql`
+- **SQL Server cím:** `10.10.10.69`
+- **Autentikáció:** SQL Server Authentication (felhasználónév/jelszó tárolt az appsettings.Local.json-ban)
+
+### 5.2 Táblák sémája (meglévő struktúra)
+
+#### **CIKK tábla**
 ```sql
-CREATE TABLE users (
-    Id INT PRIMARY KEY IDENTITY(1,1),
-    Username NVARCHAR(100) NOT NULL UNIQUE,
-    PasswordHash NVARCHAR(255) NOT NULL,
-    Email NVARCHAR(255),
-    FullName NVARCHAR(200),
-    IsActive BIT NOT NULL DEFAULT 1,
-    CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
-    UpdatedAt DATETIME2
-);
+-- Meglévő tábla struktúra
+CIKKID          INT             -- Primary Key
+CIKKSZAM        NVARCHAR(?)     -- Cikkszám
+CIKKNEV         NVARCHAR(?)     -- Cikk megnevezés
+GYARTO          NVARCHAR(?)     -- Gyártó (GYARTO.GYARTO-hoz kapcsolódik)
+GYCIKKSZAM      NVARCHAR(?)     -- Gyártói cikkszám
+ELOALLITOPID    INT             -- Előállító (PARTNER.PARTNERID-hoz kapcsolódik)
+CRUS            NVARCHAR(?)     -- Létrehozó felhasználó (USERS.USERCODE)
+CRDTI           DATETIME        -- Létrehozás dátuma/ideje
 ```
 
-#### **cikkek**
+#### **GYARTO tábla**
 ```sql
-CREATE TABLE cikkek (
-    Id INT PRIMARY KEY IDENTITY(1,1),
-    CikkKod NVARCHAR(50) NOT NULL UNIQUE,
-    Megnevezes NVARCHAR(500) NOT NULL,
-    Leiras NVARCHAR(MAX),
-    EgysegAr DECIMAL(18,2) NOT NULL,
-    MennyisegiEgyseg NVARCHAR(20),
-    GyartoId INT,
-    CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
-    UpdatedAt DATETIME2,
-    FOREIGN KEY (GyartoId) REFERENCES gyartok(Id)
-);
+-- Meglévő tábla struktúra
+GYARTO          NVARCHAR(?)     -- Primary Key (gyártó azonosító)
+MEGJ            NVARCHAR(?)     -- Megjegyzés
+LEIRAS          NVARCHAR(?)     -- Leírás
+GYARTOADAT1     NVARCHAR(?)     -- Gyártó adat 1
+GYARTOADAT2     NVARCHAR(?)     -- Gyártó adat 2
+CRUS            NVARCHAR(?)     -- Létrehozó felhasználó (USERS.USERCODE)
+CRDTI           DATETIME        -- Létrehozás dátuma/ideje
 ```
 
-#### **gyartok**
+#### **PARTNER tábla**
 ```sql
-CREATE TABLE gyartok (
-    Id INT PRIMARY KEY IDENTITY(1,1),
-    GyartoNev NVARCHAR(200) NOT NULL,
-    Orszag NVARCHAR(100),
-    ContactEmail NVARCHAR(255),
-    ContactPhone NVARCHAR(50),
-    CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
-    UpdatedAt DATETIME2
-);
+-- Meglévő tábla struktúra
+PARTNERID       INT             -- Primary Key
+PARTNERNEV      NVARCHAR(?)     -- Partner neve
+FIZOSZT         NVARCHAR(?)     -- Fizetési osztály/mód
+ORSZAG          NVARCHAR(?)     -- Ország
+IRSZ            NVARCHAR(?)     -- Irányítószám
+VAROS           NVARCHAR(?)     -- Város
+UTCA            NVARCHAR(?)     -- Utca
+CRUS            NVARCHAR(?)     -- Létrehozó felhasználó (USERS.USERCODE)
+CRDTI           DATETIME        -- Létrehozás dátuma/ideje
 ```
 
-#### **partnerek**
+#### **USERS tábla**
 ```sql
-CREATE TABLE partnerek (
-    Id INT PRIMARY KEY IDENTITY(1,1),
-    PartnerNev NVARCHAR(200) NOT NULL,
-    AdoSzam NVARCHAR(50),
-    Cim NVARCHAR(500),
-    ContactPerson NVARCHAR(200),
-    Email NVARCHAR(255),
-    Phone NVARCHAR(50),
-    PartnerTipus NVARCHAR(50), -- 'Beszállító', 'Vevő', 'Mindkettő'
-    CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE(),
-    UpdatedAt DATETIME2
-);
+-- Meglévő tábla struktúra
+USERCODE        NVARCHAR(?)     -- Primary Key (felhasználói kód)
+USERNAME        NVARCHAR(?)     -- Felhasználó neve
 ```
 
-### 5.2 Kapcsolati séma
+**Megjegyzés:** A USERS tábla jelenleg csak 2 mezőt tartalmaz. Az autentikációhoz szükséges további mezők (pl. PasswordHash) későbbi fázisban kerülnek hozzáadásra, vagy alternatív megoldást kell alkalmazni (pl. külön Auth tábla).
+
+### 5.3 Kapcsolati séma
 
 ```
-gyartok (1) ──────< (N) cikkek
+GYARTO (1:GYARTO) ──────< (N:GYARTO) CIKK
+PARTNER (1:PARTNERID) ──────< (N:ELOALLITOPID) CIKK
+USERS (1:USERCODE) ──────< (N:CRUS) CIKK
+USERS (1:USERCODE) ──────< (N:CRUS) GYARTO
+USERS (1:USERCODE) ──────< (N:CRUS) PARTNER
 ```
 
-### 5.3 Tárolt eljárások példák
+### 5.4 Tárolt eljárások példák
+
+**Megjegyzés:** Ezek példa tárolt eljárások, amelyek a későbbi fázisokban kerülnek implementálásra.
 
 #### **GetCikkekByGyarto**
 ```sql
 CREATE PROCEDURE GetCikkekByGyarto
-    @GyartoId INT
+    @Gyarto NVARCHAR(100)
 AS
 BEGIN
-    SELECT c.*, g.GyartoNev
-    FROM cikkek c
-    INNER JOIN gyartok g ON c.GyartoId = g.Id
-    WHERE c.GyartoId = @GyartoId
-    ORDER BY c.Megnevezes;
+    SELECT c.*, g.MEGJ, g.LEIRAS
+    FROM CIKK c
+    INNER JOIN GYARTO g ON c.GYARTO = g.GYARTO
+    WHERE c.GYARTO = @Gyarto
+    ORDER BY c.CIKKNEV;
 END
 ```
 
@@ -421,51 +424,55 @@ CREATE PROCEDURE GetStatisztika
 AS
 BEGIN
     SELECT
-        (SELECT COUNT(*) FROM cikkek) AS CikkekSzama,
-        (SELECT COUNT(*) FROM gyartok) AS GyartokSzama,
-        (SELECT COUNT(*) FROM partnerek) AS PartnerekSzama,
-        (SELECT AVG(EgysegAr) FROM cikkek) AS AtlagosAr;
+        (SELECT COUNT(*) FROM CIKK) AS CikkekSzama,
+        (SELECT COUNT(*) FROM GYARTO) AS GyartokSzama,
+        (SELECT COUNT(*) FROM PARTNER) AS PartnerekSzama,
+        (SELECT COUNT(DISTINCT GYARTO) FROM CIKK) AS HasznaltGyartokSzama;
 END
 ```
 
-### 5.4 Connection String konfiguráció
+### 5.5 Connection String konfiguráció
 
-**appsettings.Development.json:**
+**⚠️ FONTOS:** A projekt egyetlen adatbázist használ (`dev_graphql`), nincs szükség külön dev/prod környezetre az adatbázis szintjén.
+
+**appsettings.json (alapértelmezett):**
 ```json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Data Source=10.10.10.69;Initial Catalog=DevDatabase;User ID=dev_user;Password=dev_password;TrustServerCertificate=True;"
-  }
-}
-```
-
-**appsettings.Production.json:**
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Data Source=10.10.10.69;Initial Catalog=ProdDatabase;User ID=prod_user;Password=prod_password;TrustServerCertificate=True;"
-  }
-}
-```
-
-**⚠️ FONTOS:** Az éleshez tartozó jelszavakat **soha ne** commitoljuk verziókezelőbe!
-
-**appsettings.Local.json** (git-ignore-olva):
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Data Source=10.10.10.69;Initial Catalog=AppDatabase;User ID=actual_user;Password=actual_password;TrustServerCertificate=True;"
+    "DefaultConnection": "Data Source=10.10.10.69;Initial Catalog=dev_graphql;TrustServerCertificate=True;"
   },
   "JwtSettings": {
-    "SecretKey": "your-super-secret-key-min-32-chars-long-12345678"
+    "SecretKey": "PLACEHOLDER_MIN_32_CHARS_REPLACE_IN_LOCAL_JSON_FILE",
+    "Issuer": "GraphQLApp",
+    "Audience": "GraphQLApp",
+    "ExpirationMinutes": 60
   }
 }
 ```
+
+**appsettings.Local.json** (git-ignore-olva, valós credentials itt):
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Data Source=10.10.10.69;Initial Catalog=dev_graphql;User ID=YOUR_USERNAME;Password=YOUR_PASSWORD;TrustServerCertificate=True;"
+  },
+  "JwtSettings": {
+    "SecretKey": "your-super-secret-key-min-32-chars-long-12345678-CHANGE-THIS"
+  }
+}
+```
+
+**⚠️ BIZTONSÁGI FIGYELMEZTETÉSEK:**
+1. Az `appsettings.Local.json` fájlt **SOHA NE** commitoljuk Git-be!
+2. Az SQL Server felhasználónevet és jelszót **csak** az `appsettings.Local.json`-ban tároljuk
+3. A JWT SecretKey-t **minimum 32 karakter** hosszúnak kell lennie
+4. Production környezetben használjunk még erősebb jelszavakat és titkosítást
 
 **.gitignore:**
 ```
 appsettings.Local.json
 appsettings.*.Local.json
+*.Local.json
 ```
 
 ---
@@ -476,27 +483,19 @@ appsettings.*.Local.json
 
 #### **6.1.1 Types (Entitások)**
 
+**Megjegyzés:** Ezek a GraphQL típusok a meglévő adatbázis táblákat reprezentálják.
+
 **UserType.cs:**
 ```csharp
 namespace GraphQLApp.API.GraphQL.Types;
 
 public class UserType
 {
-    public int Id { get; set; }
+    [GraphQLName("userCode")]
+    public string UserCode { get; set; } = string.Empty; // USERS.USERCODE (PK)
 
-    [GraphQLName("username")]
-    public string Username { get; set; } = string.Empty;
-
-    public string? Email { get; set; }
-
-    [GraphQLName("fullName")]
-    public string? FullName { get; set; }
-
-    public bool IsActive { get; set; }
-
-    public DateTime CreatedAt { get; set; }
-
-    public DateTime? UpdatedAt { get; set; }
+    [GraphQLName("userName")]
+    public string UserName { get; set; } = string.Empty; // USERS.USERNAME
 }
 ```
 
@@ -506,40 +505,50 @@ namespace GraphQLApp.API.GraphQL.Types;
 
 public class CikkType
 {
-    public int Id { get; set; }
+    [GraphQLName("cikkId")]
+    public int CikkId { get; set; } // CIKK.CIKKID (PK)
 
-    [GraphQLName("cikkKod")]
-    public string CikkKod { get; set; } = string.Empty;
+    [GraphQLName("cikkSzam")]
+    public string? CikkSzam { get; set; } // CIKK.CIKKSZAM
 
-    [GraphQLName("megnevezes")]
-    public string Megnevezes { get; set; } = string.Empty;
+    [GraphQLName("cikkNev")]
+    public string? CikkNev { get; set; } // CIKK.CIKKNEV
 
-    [GraphQLName("leiras")]
-    public string? Leiras { get; set; }
+    [GraphQLName("gyarto")]
+    public string? Gyarto { get; set; } // CIKK.GYARTO (FK -> GYARTO.GYARTO)
 
-    [GraphQLName("egysegAr")]
-    public decimal EgysegAr { get; set; }
+    [GraphQLName("gyCikkSzam")]
+    public string? GyCikkSzam { get; set; } // CIKK.GYCIKKSZAM
 
-    [GraphQLName("mennyisegiEgyseg")]
-    public string? MennyisegiEgyseg { get; set; }
+    [GraphQLName("eloallitoPId")]
+    public int? EloallitoPId { get; set; } // CIKK.ELOALLITOPID (FK -> PARTNER.PARTNERID)
 
-    [GraphQLName("gyartoId")]
-    public int? GyartoId { get; set; }
+    [GraphQLName("crus")]
+    public string? Crus { get; set; } // CIKK.CRUS (FK -> USERS.USERCODE)
 
-    public DateTime CreatedAt { get; set; }
+    [GraphQLName("crdti")]
+    public DateTime? Crdti { get; set; } // CIKK.CRDTI
 
-    public DateTime? UpdatedAt { get; set; }
-
-    // Navigation property
-    [GraphQLIgnore]
-    public GyartoType? Gyarto { get; set; }
-
-    // Resolver method
+    // Navigation properties - resolverek
     public async Task<GyartoType?> GetGyartoAsync(
         [Service] IGyartoRepository gyartoRepository)
     {
-        if (GyartoId == null) return null;
-        return await gyartoRepository.GetByIdAsync(GyartoId.Value);
+        if (string.IsNullOrEmpty(Gyarto)) return null;
+        return await gyartoRepository.GetByGyartoCodeAsync(Gyarto);
+    }
+
+    public async Task<PartnerType?> GetEloallitoAsync(
+        [Service] IPartnerRepository partnerRepository)
+    {
+        if (EloallitoPId == null) return null;
+        return await partnerRepository.GetByIdAsync(EloallitoPId.Value);
+    }
+
+    public async Task<UserType?> GetCreatedByUserAsync(
+        [Service] IUserRepository userRepository)
+    {
+        if (string.IsNullOrEmpty(Crus)) return null;
+        return await userRepository.GetByUserCodeAsync(Crus);
     }
 }
 ```
@@ -550,29 +559,39 @@ namespace GraphQLApp.API.GraphQL.Types;
 
 public class GyartoType
 {
-    public int Id { get; set; }
+    [GraphQLName("gyarto")]
+    public string Gyarto { get; set; } = string.Empty; // GYARTO.GYARTO (PK)
 
-    [GraphQLName("gyartoNev")]
-    public string GyartoNev { get; set; } = string.Empty;
+    [GraphQLName("megj")]
+    public string? Megj { get; set; } // GYARTO.MEGJ
 
-    [GraphQLName("orszag")]
-    public string? Orszag { get; set; }
+    [GraphQLName("leiras")]
+    public string? Leiras { get; set; } // GYARTO.LEIRAS
 
-    [GraphQLName("contactEmail")]
-    public string? ContactEmail { get; set; }
+    [GraphQLName("gyartoAdat1")]
+    public string? GyartoAdat1 { get; set; } // GYARTO.GYARTOADAT1
 
-    [GraphQLName("contactPhone")]
-    public string? ContactPhone { get; set; }
+    [GraphQLName("gyartoAdat2")]
+    public string? GyartoAdat2 { get; set; } // GYARTO.GYARTOADAT2
 
-    public DateTime CreatedAt { get; set; }
+    [GraphQLName("crus")]
+    public string? Crus { get; set; } // GYARTO.CRUS (FK -> USERS.USERCODE)
 
-    public DateTime? UpdatedAt { get; set; }
+    [GraphQLName("crdti")]
+    public DateTime? Crdti { get; set; } // GYARTO.CRDTI
 
     // Collection navigation
     public async Task<List<CikkType>> GetCikkekAsync(
         [Service] ICikkRepository cikkRepository)
     {
-        return await cikkRepository.GetByGyartoIdAsync(Id);
+        return await cikkRepository.GetByGyartoAsync(Gyarto);
+    }
+
+    public async Task<UserType?> GetCreatedByUserAsync(
+        [Service] IUserRepository userRepository)
+    {
+        if (string.IsNullOrEmpty(Crus)) return null;
+        return await userRepository.GetByUserCodeAsync(Crus);
     }
 }
 ```
@@ -583,29 +602,46 @@ namespace GraphQLApp.API.GraphQL.Types;
 
 public class PartnerType
 {
-    public int Id { get; set; }
+    [GraphQLName("partnerId")]
+    public int PartnerId { get; set; } // PARTNER.PARTNERID (PK)
 
     [GraphQLName("partnerNev")]
-    public string PartnerNev { get; set; } = string.Empty;
+    public string? PartnerNev { get; set; } // PARTNER.PARTNERNEV
 
-    [GraphQLName("adoSzam")]
-    public string? AdoSzam { get; set; }
+    [GraphQLName("fizOszt")]
+    public string? FizOszt { get; set; } // PARTNER.FIZOSZT
 
-    public string? Cim { get; set; }
+    [GraphQLName("orszag")]
+    public string? Orszag { get; set; } // PARTNER.ORSZAG
 
-    [GraphQLName("contactPerson")]
-    public string? ContactPerson { get; set; }
+    [GraphQLName("irsz")]
+    public string? Irsz { get; set; } // PARTNER.IRSZ
 
-    public string? Email { get; set; }
+    [GraphQLName("varos")]
+    public string? Varos { get; set; } // PARTNER.VAROS
 
-    public string? Phone { get; set; }
+    [GraphQLName("utca")]
+    public string? Utca { get; set; } // PARTNER.UTCA
 
-    [GraphQLName("partnerTipus")]
-    public string? PartnerTipus { get; set; }
+    [GraphQLName("crus")]
+    public string? Crus { get; set; } // PARTNER.CRUS (FK -> USERS.USERCODE)
 
-    public DateTime CreatedAt { get; set; }
+    [GraphQLName("crdti")]
+    public DateTime? Crdti { get; set; } // PARTNER.CRDTI
 
-    public DateTime? UpdatedAt { get; set; }
+    // Collection navigation
+    public async Task<List<CikkType>> GetCikkekAsync(
+        [Service] ICikkRepository cikkRepository)
+    {
+        return await cikkRepository.GetByEloallitoIdAsync(PartnerId);
+    }
+
+    public async Task<UserType?> GetCreatedByUserAsync(
+        [Service] IUserRepository userRepository)
+    {
+        if (string.IsNullOrEmpty(Crus)) return null;
+        return await userRepository.GetByUserCodeAsync(Crus);
+    }
 }
 ```
 
